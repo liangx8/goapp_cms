@@ -5,7 +5,7 @@ import (
 	"archive/zip"
 
 )
-func ZipForEach(mpf multipart.File,zc zCallback) error {
+func ZipForEach(mpf multipart.File,zc Zcallback) error {
 	size,err :=mpf.Seek(0,2)
 	if err != nil {
 		return err

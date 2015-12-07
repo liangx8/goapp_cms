@@ -5,10 +5,10 @@ import (
 	"archive/tar"
 	"compress/gzip"
 )
-type zCallback func(io.Reader,os.FileInfo,string) error
+type Zcallback func(io.Reader,os.FileInfo,string) error
 
 
-func TarForEach(r io.Reader,zc zCallback) error {
+func TarForEach(r io.Reader,zc Zcallback) error {
 	zr,err := gzip.NewReader(r)
 	if err != nil {
 		return err

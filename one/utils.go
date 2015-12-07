@@ -2,6 +2,8 @@ package one
 import (
 	"strings"
 	"regexp"
+	"crypto/sha1"
+	"fmt"
 )
 var pat *regexp.Regexp
 func init(){
@@ -40,8 +42,15 @@ func guessMimeType(name string)string{
 		return "application/json"
 	case ".xml":
 		return "applicaton/xml"
+	case ".ico":
+		return "image/x-icon"
 	default:
 		return "application/octet-stream"
 	}
 
+}
+
+func ShaStr(s string) string{
+	sha1.Sum([]byte(s))
+	return fmt.Sprintf("%x",sha1.Sum([]byte(s)))
 }

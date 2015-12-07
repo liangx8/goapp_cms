@@ -1,8 +1,6 @@
 package one
 
 import(
-	"io"
-	"os"
 	"net/http"
 	"html/template"
 
@@ -10,8 +8,9 @@ import(
 
 	"appengine"
 
-	"zpack"
-	"wraperror"
+
+//	"zpack"
+//	"wraperror"
 )
 
 var tmpl *template.Template
@@ -26,61 +25,35 @@ func init(){
 }
 func backEnd(w http.ResponseWriter,r *http.Request){
 	c:=appengine.NewContext(r)
-	var filelist []string
 	var err error
-
-
-	//	type zCallback func(io.Reader,os.FileInfo) error
-	each :=	func(rd io.Reader,fi os.FileInfo,fullname string,ccc appengine.Context) error{
-		if !fi.IsDir(){
-			filelist = append(filelist,fullname)
-			er:=store(ccc,rd,fullname,guessMimeType(fullname))
-			if er!= nil {
-				return wraperror.Printf(er,"the file '%s' in your upload is too large",fullname)
-			}
-		}
-		return nil
-	}
-
-
+	var filelist []string
 	if r.Method == "POST" {
+
 		ty := r.FormValue("type");
 		switch ty{
 		case "zipupload":
-			filelist =make([]string,0,10)
+
 			f,_,er := r.FormFile("filename")
 			if er != nil {
 				c.Errorf("%v",er)
 				err=er
 			} else {
-				err=deleteAll(c,func(cc appengine.Context)error{
-					return zpack.ZipForEach(f,
-						func(rd io.Reader,fi os.FileInfo,fullname string) error{
-							return each(rd,fi,fullname,cc)
-						})
-				})
-				if err != nil {
-						c.Errorf("%v",err)
-				}
-			}
-		case "gzipupload":
-			filelist =make([]string,0,10)
-			filelist =make([]string,0,10)
-			f,_,er := r.FormFile("filename")
-			if er != nil {
-				c.Errorf("%v",er)
-				err=er
-			} else {
-				err=deleteAll(c,func(cc appengine.Context)error{
-					return zpack.TarForEach(f,
-						func(rd io.Reader,fi os.FileInfo,fullname string) error{
-							return each(rd,fi,fullname,cc)
-						})
-				})
+				filelist,err=saveZip(c,f,true)
 				if err != nil {
 					c.Errorf("%v",err)
 				}
+			}
+		case "gzipupload":
+			f,_,er := r.FormFile("filename")
+			if er != nil {
+				c.Errorf("%v",er)
+				err=er
+			} else {
+				filelist,err=saveZip(c,f,false)
 
+				if err != nil {
+					c.Errorf("%v",err)
+				}
 			}
 		default:
 
