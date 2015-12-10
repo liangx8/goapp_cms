@@ -2,8 +2,9 @@ package one
 
 import(
 	"net/http"
-	"appengine"
-
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
+//	"golang.org/x/net/context"
 	"wraperror"
 )
 
@@ -18,7 +19,7 @@ func front(w http.ResponseWriter,r *http.Request){
 		f,err = getByName(c,url[1:])
 	}
 	if err != nil{
-		c.Errorf("%v",wraperror.Printf(err,"path %s is not exist anymore",url))
+		log.Errorf(c,"%v",wraperror.Printf(err,"path %s is not exist anymore",url))
 		http.NotFound(w,r)
 		return
 	}

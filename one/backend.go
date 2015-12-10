@@ -6,8 +6,10 @@ import(
 
 
 
-	"appengine"
+	//	"golang.org/x/net/context"
 
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 
 //	"zpack"
 //	"wraperror"
@@ -35,24 +37,28 @@ func backEnd(w http.ResponseWriter,r *http.Request){
 
 			f,_,er := r.FormFile("filename")
 			if er != nil {
-				c.Errorf("%v",er)
+				log.Errorf(c,"%v",er)
 				err=er
 			} else {
 				filelist,err=saveZip(c,f,true)
 				if err != nil {
-					c.Errorf("%v",err)
+					log.Errorf(c,"%v",er)
+
 				}
 			}
 		case "gzipupload":
 			f,_,er := r.FormFile("filename")
 			if er != nil {
-				c.Errorf("%v",er)
+				log.Errorf(c,"%v",er)
+
 				err=er
 			} else {
 				filelist,err=saveZip(c,f,false)
 
 				if err != nil {
-					c.Errorf("%v",err)
+					log.Errorf(c,"%v",er)
+
+
 				}
 			}
 		default:

@@ -5,8 +5,10 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 
-	"appengine"
-	"appengine/datastore"
+	"golang.org/x/net/context"
+
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/datastore"
 
 	"zpack"
 	"utils"
@@ -19,10 +21,10 @@ type File struct{
 	Content []byte
 }
 // for use transaction, a root key must be define
-func getRootKey(c appengine.Context) *datastore.Key{
+func getRootKey(c context.Context) *datastore.Key{
 	return datastore.NewKey(c,FILE_KIND,"root",0,nil)
 }
-func store(c appengine.Context,r io.Reader, name,mimeType string) (*datastore.Key,error){
+func store(c context.Context,r io.Reader, name,mimeType string) (*datastore.Key,error){
 	var file File
 	var err error
 	file.Name=name
@@ -35,7 +37,7 @@ func store(c appengine.Context,r io.Reader, name,mimeType string) (*datastore.Ke
 
 	return k,nil
 }
-func builderEach(c appengine.Context,col utils.Collection,fl *[]string) zpack.Zcallback{
+func builderEach(c context.Context,col utils.Collection,fl *[]string) zpack.Zcallback{
 	return func(r io.Reader,fi os.FileInfo,fullname string) error{
 		k,err:=store(c,r,fullname,guessMimeType(fullname))
 		if err != nil { return wraperror.Printf(err,"the error was probobly cause by that file '%s' in package is too large", fullname) }
@@ -56,7 +58,7 @@ func builderEach(c appengine.Context,col utils.Collection,fl *[]string) zpack.Zc
 	}
 }
 
-func saveZip(c appengine.Context,f multipart.File,zip bool)([]string,error) {
+func saveZip(c context.Context,f multipart.File,zip bool)([]string,error) {
 	keys,err := datastore.NewQuery(FILE_KIND).KeysOnly().GetAll(c,nil)
 	filelist :=make([]string,0,10)
 	if err != nil { return nil,err}
@@ -66,7 +68,7 @@ func saveZip(c appengine.Context,f multipart.File,zip bool)([]string,error) {
 	}
 	//	type zCallback func(io.Reader,os.FileInfo,string) error
 
-	err = datastore.RunInTransaction(c,func(cc appengine.Context) error{
+	err = datastore.RunInTransaction(c,func(cc context.Context) error{
 		each := builderEach(cc,col,&filelist)
 		if zip {
 			return zpack.ZipForEach(f,each)
@@ -83,7 +85,8 @@ func saveZip(c appengine.Context,f multipart.File,zip bool)([]string,error) {
 	}
 	if len(keys) > 0 {
 		for _,k := range keys{
-			c.Infof("delete:%s\n",k.StringID())
+			log.Infof(c,"delete:%s\n",k.StringID())
+
 		}
 		err=datastore.DeleteMulti(c,keys)
 		if err != nil {	return nil,err	}
@@ -91,11 +94,11 @@ func saveZip(c appengine.Context,f multipart.File,zip bool)([]string,error) {
 	return filelist,nil
 }
 
-func getByName(c appengine.Context,name string) (*File,error){
+func getByName(c context.Context,name string) (*File,error){
 	var f File
 	sk := ShaStr(name)
 	k := datastore.NewKey(c,FILE_KIND,sk,0,getRootKey(c))
-	c.Infof("%s",sk)
+	log.Infof(c,"%s",sk)
 	err:=datastore.Get(c,k,&f)
 	if err != nil { return nil,err}
 	return &f,nil

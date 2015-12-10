@@ -65,8 +65,7 @@ func (co *coll)Add(e interface{}){
 	co.head=n
 }
 func (co *coll)Iterate() Iterator{
-	bof := &node{next:co.head}
-	return &iterator{phead:&co.head,boc:true,prev:nil,current:bof}
+	return &iterator{phead:&co.head,boc:true,prev:nil,current:&node{next:co.head}}
 }
 func NewCollection() Collection{
 	return &coll{head:nil}
