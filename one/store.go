@@ -57,7 +57,13 @@ func builderEach(c context.Context,col utils.Collection,fl *[]string) zpack.Zcal
 		return nil
 	}
 }
-
+type z struct{
+	io.ReaderAt
+	size int64
+}
+func (zz *z)Size() int64{
+	return zz.size
+}
 func saveZip(c context.Context,f multipart.File,zip bool)([]string,error) {
 	keys,err := datastore.NewQuery(FILE_KIND).KeysOnly().GetAll(c,nil)
 	filelist :=make([]string,0,10)
@@ -67,11 +73,15 @@ func saveZip(c context.Context,f multipart.File,zip bool)([]string,error) {
 		col.Add(o)
 	}
 	//	type zCallback func(io.Reader,os.FileInfo,string) error
+	size,err :=f.Seek(0,2)
+	if err != nil {
+		return nil,err
+	}
 
 	err = datastore.RunInTransaction(c,func(cc context.Context) error{
 		each := builderEach(cc,col,&filelist)
 		if zip {
-			return zpack.ZipForEach(f,each)
+			return zpack.ZipForEach(&z{f,size},each)
 		} else {
 			return zpack.TarForEach(f,each)
 		}

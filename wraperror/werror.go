@@ -15,6 +15,9 @@ func WrapperError(inner error,message string) error{
 	if inner == nil {
 		return errors.New(message)
 	}
+	if message == "" {
+		return inner
+	}
 	return &werror{err:inner,msg:message}
 }
 
@@ -23,4 +26,9 @@ func Printf(inner error,format string, objs ...interface{})error{
 		return fmt.Errorf(format, objs...)
 	}
 	return &werror{err:inner,msg:fmt.Sprintf(format,objs...)}
+}
+
+type MultiError []error
+func (me MultiError)Error()string{
+	return fmt.Sprintf("total %d error(s)",len(me))
 }
