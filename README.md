@@ -1,3 +1,4 @@
-# A personal use MIS system
+# A Simple CMS
 
-    goapp serve webapp
+* /gcsb for backend manager
+* /static/ all files under this directory is not touch
