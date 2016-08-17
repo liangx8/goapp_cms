@@ -6,17 +6,23 @@ import (
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
-	"google.golang.org/cloud/storage"
+	"cloud.google.com/go/storage"
 
 	
-	"gcs"
+	"github.com/liangx8/gcloud-helper/gcs"
+	"github.com/liangx8/spark/session"
 )
 const (
 	bucketName="pfa.rc-greed.com"
 )
 
 func hello(w http.ResponseWriter,r *http.Request){
-	fmt.Fprintln(w,"connect to google clould storage...")
+
+	s:=session.Get(w,r)
+	if !s.Get("",nil) {
+		fmt.Fprintln(w,"Are you going to login?")
+		return
+	}
 	ctx := appengine.NewContext(r)
 	
 	client, err:=storage.NewClient(ctx)
@@ -30,19 +36,33 @@ func hello(w http.ResponseWriter,r *http.Request){
 		}
 	}()
 	bucket := client.Bucket(bucketName)
-	each := gcs.All(ctx,bucket)
-	err=each(func(obj *storage.ObjectHandle)error{
-		attrs,err := obj.Attrs(ctx)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(w,attrs.Name)
+	err = gcs.All(ctx,bucket,gcs.AttrCallback(func(obj *storage.ObjectAttrs)error{
+		fmt.Fprintln(w,obj.Name)
 		return nil
-	})
+	}))
+
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
 	}
+	fmt.Fprintln(w,s.Id())
+
+}
+
+func login(w http.ResponseWriter,r *http.Request){
+	s:=session.Get(w,r)
+	t:=true
+	s.Put("",&t)
+	fmt.Fprintln(w,"OK")
+}
+func logout(w http.ResponseWriter,r *http.Request){
+	s:=session.Get(w,r)
+	t:=false
+	s.Put("",&t)
+	fmt.Fprintln(w,"logout")
 }
 func init(){
+	SessionInit()
 	http.HandleFunc("/",hello)
+	http.HandleFunc("/login",login)
+	http.HandleFunc("/logout",logout)
 }

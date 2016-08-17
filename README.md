@@ -1,3 +1,3 @@
-# Personal Fananceial System
+# Personal Fananceial Application
 
 
