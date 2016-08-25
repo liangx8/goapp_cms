@@ -16,6 +16,7 @@ import (
 )
 
 func admin(ctx context.Context){
+	bucketName := defaultConfig.BucketName
 	w,r,err := spark.ReadHttpContext(ctx)
 	if err != nil {
 		log.Errorf(ctx,"%v",err)

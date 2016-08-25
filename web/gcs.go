@@ -34,12 +34,14 @@ func pwdEncrypt(salt,pwd string)string{
 	return fmt.Sprintf("%s%x",salt,b)
 }
 func saveConfig(ctx context.Context,c *Config){
+		bucketName := defaultConfig.BucketName
 	client,err:=storage.NewClient(ctx)
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
 		return
 	}
 	defer client.Close()
+	
 	bucket := client.Bucket(bucketName)
 	cfgObj:=bucket.Object("config.yaml")
 	w:=cfgObj.NewWriter(ctx)

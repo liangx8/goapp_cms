@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"io"
 	"sync"
+	"os"
 
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
@@ -20,11 +21,10 @@ import (
 	"github.com/liangx8/spark"
 
 )
-const (
-	bucketName="pfa.rc-greed.com"
-)
+
 
 func index(ctx context.Context){
+	bucketName := defaultConfig.BucketName
 	w,r,err := spark.ReadHttpContext(ctx)
 	if err != nil { panic (err) }
 	
@@ -68,6 +68,7 @@ func init(){
 	spk.HandleFunc("/reset",pageReset)
 }
 func LoadConfig(ctx context.Context){
+	bucketName := defaultConfig.BucketName
 	client,err:=storage.NewClient(ctx)
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
@@ -75,6 +76,21 @@ func LoadConfig(ctx context.Context){
 	}
 	defer client.Close()
 	bucket := client.Bucket(bucketName)
+	if attrs,err := bucket.Attrs(ctx); err != nil {
+		err = bucket.Create(ctx,"default*",nil)
+		if err != nil {
+			log.Errorf(ctx,"%v",err)
+			return
+		}
+		attrs,err = bucket.Attrs(ctx)
+		if err != nil {
+			log.Errorf(ctx,"%v",err)
+			return
+		}
+		log.Infof(ctx,"Bucket %s was created",attrs.Name)
+		
+	}
+	
 	cfgObj:=bucket.Object("config.yaml")
 	r,err:=cfgObj.NewReader(ctx)
 	if err != nil {
@@ -100,8 +116,14 @@ func LoadConfig(ctx context.Context){
 func initReadConfig(ctx context.Context,chain spark.HandleFunc){
 	once.Do(func(){
 		log.Infof(ctx,"Service is funcational, Instance(%s)",appengine.InstanceID())
+		defaultConfig.BucketName=os.Getenv("BUCKET_NAME")
 		LoadConfig(ctx)
 		parseTemplate()
+		keys:=os.Environ()
+		for _,key:= range keys{
+			log.Infof(ctx,"%s=%s\n",key,os.Getenv(key))
+		}
+		log.Infof(ctx,"%s\n",appengine.DefaultVersionHostname(ctx))
 	})
 	chain(ctx)
 }

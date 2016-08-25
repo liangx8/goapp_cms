@@ -10,6 +10,7 @@ type (
 		SourcesPkg     string    `yaml:"sources-pkg"`
 		ResetId        string    `yaml:"reset-id"` // passPhase is expected a reset?
 		ResetTimeout   time.Time `yaml:"reset-timeout"`
+		BucketName     string    `yaml:"bucket-name"`
 	}
 )
 var defaultConfig =Config{
