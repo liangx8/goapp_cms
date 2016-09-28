@@ -1,3 +1,7 @@
-# Personal Fananceial Application
+# Web site manager
+/login logine
+/admin upload web site content
+/reset reset password
+/trigger
 
 
