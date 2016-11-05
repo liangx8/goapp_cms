@@ -1,8 +1,5 @@
 package pfa
 
-import (
-	"time"
-)
 
 type (
 	Expense struct {
@@ -10,7 +7,7 @@ type (
 		CountIn bool `json:"count-in" yaml:"count-in"`
 		Remark,Type string
 		SubType string `json:"sub-type" yaml:"sub-type"`
-		When,Update time.Time
+		When,Update int64
 		
 	}
 )

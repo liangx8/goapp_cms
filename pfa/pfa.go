@@ -83,6 +83,7 @@ func PFA(ctx context.Context){
 	err = unmarshal(buf,&exps)
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
+		fmt.Fprintf(w,result_template,false,err,"")
 		return
 	}
 	dao,err := NewDao(ctx,account)
@@ -99,7 +100,15 @@ func PFA(ctx context.Context){
 	fmt.Fprintf(w,"上传了%d个项目\n",len(exps))
 	fmt.Fprintf(w,"上传账套:%s\n",account)
 }
+
 const (
 	data_incoming byte = 1
 	data_outgoing byte = 2
+	result_template =`
+ok: %v
+error: %v
+message: %s
+
+`
 )
+
