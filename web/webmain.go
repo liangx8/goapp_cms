@@ -23,15 +23,12 @@ func index(ctx context.Context){
 		return
 	}
 	
-
-	client,err := storage.NewClient(ctx)
+	bucket,err := gcs.NewBucket(ctx,pfa.ProjectId,"pfa.rc-greed.com")
 	if err != nil {
 		fmt.Fprintln(w,err)
 		return
 	}
-	defer client.Close()
-
-	bucket := gcs.Bucket{B:client.Bucket("pfa.rc-greed.com"),C:ctx}
+	defer bucket.Close()
 	err = bucket.Objects(gcs.AttrCallback(func(attrs *storage.ObjectAttrs)error{
 		fmt.Fprintln(w,attrs.Name)
 		return nil
@@ -45,8 +42,8 @@ func index(ctx context.Context){
 
 func init(){
 	spk:=spark.New(appengine.NewContext)
+	spk.HandleFunc("/pfa/account",pfa.Account)
 	spk.HandleFunc("/pfa/",pfa.PFA)
 	spk.HandleFunc("/",index)
 }
 var once sync.Once
-const projectId="personal-financial-140007"

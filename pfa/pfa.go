@@ -21,7 +21,7 @@ func PFA(ctx context.Context){
 	switch r.Method{
 	case "PUT","POST":
 	default:
-		fmt.Fprintf(w,"Welcome!")
+		index(ctx)
 		return
 	}
 	buf :=make([]byte,2)
