@@ -1,19 +1,25 @@
+{{$dateStr := .toDate}}
+{{$timestampStr := .toTimestamp}}
 <html>
   <head>
 	<title>帐套 {{.accountName}}</title>
   </head>
   <body>
-	<table>
+	<table width="100%">
 	  <tr>
-		<th>Seq</th>
-		<th>Type</th>
-		<th>Amount</th>
+		<th>SEQ</th>
+		<th>类型1</th>
+		<th>金额</th>
+		<th>日期</th>
+		<th>update</th>
 	  </tr>
 	  {{range .data}}
 	  <tr>
 		<td>{{.Seq}}</td>
 		<td>{{.Type}}</td>
 		<td>{{.Amount}}</td>
+		<td>{{call $dateStr .When}}</td>
+		<td>{{call $timestampStr .Update}}</td>
 	  </tr>
 	  {{end}}
 		  

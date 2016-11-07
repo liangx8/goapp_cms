@@ -95,7 +95,8 @@ func Account(ctx context.Context){
 			return
 		}
 		model :=make(map[string]interface{})
-		model["accountName"]="虚拟帐套";
+		initModel(model)
+		model["accountName"]=account;
 		model["data"]=es
 		tmpl.Execute(w,model)
 	})
@@ -103,7 +104,10 @@ func Account(ctx context.Context){
 		log.Errorf(ctx,"%v",err)
 		return
 	}
-
+}
+func initModel(data map[string]interface{}){
+	data["toDate"]=JavaDateStr
+	data["toTimestamp"]=JavaTimestampStr
 }
 func buildTemplate(ctx context.Context,bkt *gcs.Bucket,name string) (*template.Template,*ErrorResult){
 //		tmplObj:=bkt.Object("tmpl/account_list.tmpl")
