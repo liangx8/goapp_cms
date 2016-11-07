@@ -15,15 +15,18 @@ type (
 		
 	}
 )
+var location *time.Location
 
-
+func init(){
+	location,_ = time.LoadLocation("Asia/Hong_Kong")
+}
 func JavaTimestampStr(ts int64) string{
-	t:=time.Unix(ts/1000,0)
+	t:=time.Unix(ts/1000,0).In(location)
 	return t.Format(TIMESTAMP)
 	
 }
 func JavaDateStr(ts int64) string{
-	t:=time.Unix(ts/1000,0)
+	t:=time.Unix(ts/1000,0).In(location)
 	return t.Format(DATE)
 	
 }
