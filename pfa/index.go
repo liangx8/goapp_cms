@@ -108,6 +108,7 @@ func Account(ctx context.Context){
 func initModel(data map[string]interface{}){
 	data["toDate"]=JavaDateStr
 	data["toTimestamp"]=JavaTimestampStr
+	data["money"]=Money
 }
 func buildTemplate(ctx context.Context,bkt *gcs.Bucket,name string) (*template.Template,*ErrorResult){
 //		tmplObj:=bkt.Object("tmpl/account_list.tmpl")
@@ -149,7 +150,6 @@ const (
 </ul>
 </body>
 </html>`
-	no_tmpl = "<html><head><title>你必须定义一个模板</title></head><body>必须定义一个模板'tmpl/account_list.tmpl'以便于显示内容</body></html>"
 	error_tmpl=`<html>
 <head><title>Error: {{.Title}}</title>
 <style type="text/css">

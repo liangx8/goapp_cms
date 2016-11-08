@@ -92,6 +92,7 @@ func PFA(ctx context.Context){
 		return
 	}
 	defer dao.Close()
+	
 	err=dao.Save(exps)
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
