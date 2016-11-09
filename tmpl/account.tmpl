@@ -1,4 +1,4 @@
-{{$dateStr := .toDate}}
+{{$dateStr := .toDate}}{{$money := .money}}
 {{$timestampStr := .toTimestamp}}
 <html>
   <head>
@@ -9,16 +9,20 @@
 	  <tr>
 		<th>SEQ</th>
 		<th>类型1</th>
+		<th>类型2</th>
 		<th>金额</th>
 		<th>日期</th>
+		<th>囧</th>
 		<th>update</th>
 	  </tr>
 	  {{range .data}}
 	  <tr>
 		<td>{{.Seq}}</td>
 		<td>{{.Type}}</td>
-		<td>{{.Amount}}</td>
+		<td>{{.SubType}}</td>
+		<td>{{call $money .Amount}}</td>
 		<td>{{call $dateStr .When}}</td>
+		<td>{{if .CountIn}}计算金额{{else}}排除金额{{end}}</td>
 		<td>{{call $timestampStr .Update}}</td>
 	  </tr>
 	  {{end}}

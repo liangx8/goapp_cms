@@ -59,7 +59,8 @@ func (dao *Dao)Merge(newData []Expense,msg func(countUpdate,countAdd int)) error
 	old := make([]Expense,0)
 	addExpense := make([]Expense, 0, 10)
 	err := dao.Load(&old)
-	if err != nil {
+	if err !=nil && err != storage.ErrObjectNotExist {
+		// old is not exists
 		return err
 	}
 	odr := &order{es:old,less:updateOrder}
@@ -69,25 +70,24 @@ func (dao *Dao)Merge(newData []Expense,msg func(countUpdate,countAdd int)) error
 	oldIdx := 0
 	newIdx := 0
 	cntUpdate := 0
+	oldLen := len(old)
+	newLen := len(newData)
 	for {
+		if oldLen == oldIdx || newLen == newIdx { break }
 		if old[oldIdx].Update == newData[newIdx].Update {
 			old[oldIdx]=newData[newIdx]
 			cntUpdate ++
 			oldIdx ++
-			if oldIdx == len(old) { break }
 			newIdx ++
-			if newIdx == len(newData) { break }
 			continue
 		}
 		if old[oldIdx].Update < newData[newIdx].Update {
 			oldIdx ++
-			if oldIdx == len(old) { break }
 			continue
 		}
 		// old one > new one
 		addExpense = append(addExpense,newData[newIdx])
 		newIdx ++
-		if newIdx == len(newData) { break }		
 	}
 	for i := newIdx; i< len(newData) ; i++ {
 		addExpense = append(addExpense,newData[i])

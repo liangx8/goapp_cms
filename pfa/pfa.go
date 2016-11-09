@@ -93,13 +93,14 @@ func PFA(ctx context.Context){
 	}
 	defer dao.Close()
 	
-	err=dao.Save(exps)
+	err=dao.Merge(exps,func(c1,c2 int){
+		fmt.Fprintf(w,"更新了%d个项目，添加了 %d 个项目\n",c1,c2)
+		fmt.Fprintf(w,"上传账套:%s\n",account)
+	})
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
 		return
 	}
-	fmt.Fprintf(w,"上传了%d个项目\n",len(exps))
-	fmt.Fprintf(w,"上传账套:%s\n",account)
 }
 
 const (
@@ -109,7 +110,6 @@ const (
 ok: %v
 error: %v
 message: %s
-
 `
 )
 
