@@ -34,24 +34,18 @@ func DefaultErrorResut(title string,err error) ErrorResult{
 var tempError = template.Must(template.New("").Parse(error_tmpl))
 
 func index(ctx context.Context){
-	bucket,err :=gcs.NewBucket(ctx,ProjectId,"pfa.rc-greed.com")
+	bucket,err :=myBucket(ctx)
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
 		return
 	}
 	defer bucket.Close()
 	err=spark.HttpHandleFunc(ctx,func(w http.ResponseWriter, r *http.Request){
-		q := storage.Query{
-			Delimiter:"/",
-			Prefix:"expense/",
-		}
 		account := make([]string,0,10)
-		e:=bucket.Objects(gcs.AttrCallback(func(attrs *storage.ObjectAttrs) error{
-			aName := attrs.Name[8:]
-			length := len(aName)
-			account = append(account,aName[:length-5])
-			return nil
-		}),&q)
+		e:=allAccount(bucket,func(ac string){
+			if ac == "" { return }
+			account = append(account,ac)
+		})
 		if e!= nil {
 			log.Errorf(ctx,"%v",err)
 		}
@@ -68,7 +62,7 @@ func index(ctx context.Context){
 }
 // 列出帐套中的内容
 func Account(ctx context.Context){
-	bucket,err :=gcs.NewBucket(ctx,ProjectId,"pfa.rc-greed.com")
+	bucket,err :=myBucket(ctx)
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
 		return
@@ -81,7 +75,7 @@ func Account(ctx context.Context){
 			return
 		}
 		es := make([]Expense,0,50)
-		dao,err := NewDao(ctx,account)
+		dao,err := NewYamlDao(ctx,account)
 		if err == nil {
 			err=dao.Load(&es)
 		}
@@ -139,7 +133,7 @@ func buildTemplate(ctx context.Context,bkt *gcs.Bucket,name string) (*template.T
 	panic("never reach here")
 }
 const (
-	ProjectId="personal-financial-140007"
+	ProjectId  = "personal-financial-140007"
 	account_list_tmpl = `<html>
 <head>
 <title>全部帐套</title>

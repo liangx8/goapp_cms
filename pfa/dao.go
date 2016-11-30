@@ -8,6 +8,9 @@ import (
 
 	"io/ioutil"
 	"sort"
+
+	"github.com/liangx8/gcloud-helper/gcs"
+
 )
 
 type Dao struct{
@@ -16,7 +19,7 @@ type Dao struct{
 	Save func([]Expense) error
 	Load func(*[]Expense) error
 }
-func NewDao(ctx context.Context,a string) (*Dao,error){
+func NewYamlDao(ctx context.Context,a string) (*Dao,error){
 	cli,err := storage.NewClient(ctx)
 	if err != nil { return nil,err }
 	bucket := cli.Bucket(bucketName)
@@ -102,6 +105,29 @@ func (dao *Dao)Merge(newData []Expense,msg func(countUpdate,countAdd int)) error
 	}
 	msg(cntUpdate,len(addExpense))
 	return nil
+}
+func myBucket(ctx context.Context) (*gcs.Bucket,error){
+	return gcs.NewBucket(ctx,ProjectId,bucketName)
+
+}
+func allAccount(bucket *gcs.Bucket,one func (act string)) error{
+	q := storage.Query{
+		Delimiter:"/",
+		Prefix:"expense/",
+	}
+	e:=bucket.Objects(gcs.AttrCallback(func(attrs *storage.ObjectAttrs) error{
+		aName := attrs.Name[8:]
+		length := len(aName)
+		one(aName[:length-5])
+		return nil
+	}),&q)
+	if e != nil {
+		return e
+	}else {
+		one("")
+		return nil
+	}
+
 }
 const (
 	prefix      ="expense/"
