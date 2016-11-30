@@ -5,6 +5,7 @@ import (
 
 	"html/template"
 	"io/ioutil"
+	"sort"
 
 	"golang.org/x/net/context"
 
@@ -97,6 +98,8 @@ func Account(ctx context.Context){
 		model :=make(map[string]interface{})
 		initModel(model)
 		model["accountName"]=account;
+		odr := &order{es:es,less:whenOrder}
+		sort.Sort(odr)
 		model["data"]=es
 		tmpl.Execute(w,model)
 	})

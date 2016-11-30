@@ -93,6 +93,9 @@ func (dao *Dao)Merge(newData []Expense,msg func(countUpdate,countAdd int)) error
 		addExpense = append(addExpense,newData[i])
 	}
 	old = append(old, addExpense...)
+	for i,_ := range old{
+		old[i].Seq=i
+	}
 	err = dao.Save(old)
 	if err != nil {
 		return err

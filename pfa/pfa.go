@@ -83,7 +83,7 @@ func PFA(ctx context.Context){
 	err = unmarshal(buf,&exps)
 	if err != nil {
 		log.Errorf(ctx,"%v",err)
-		fmt.Fprintf(w,result_template,false,err,"")
+		fmt.Fprintf(w,result_template,false,err,"解析传入数据错误")
 		return
 	}
 	dao,err := NewDao(ctx,account)
