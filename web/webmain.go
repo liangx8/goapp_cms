@@ -52,6 +52,7 @@ func index(ctx context.Context){
 
 func init(){
 	spk:=spark.New(appengine.NewContext)
+	spk.HandleFunc("/pfa/",pfa)
 	spk.HandleFunc("/",index)
 }
 
