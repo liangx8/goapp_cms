@@ -7,12 +7,12 @@ import (
 
 type (
 	Expense struct{
-		Seq string
-		Amount int
+		Seq string `json:"seq" yaml:"seq"`
+		Amount int `json:"amount" yaml:"amount"`
 		CountIn bool `json:"count-in" yaml:"count-in"`
-		Remark string
-		Tags []string
-		When int64
+		Remark string `json:"remark" yaml:"remark"`
+		Tags []string `json:"tags" yaml:"tags"`
+		When int64 `json:"when" yaml: "when"`
 		CreatedTime int64 `json:"created-time" yaml:"created-time"`
 	}
 )
