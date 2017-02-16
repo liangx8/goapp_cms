@@ -3,6 +3,8 @@ package expense
 import (
 	"time"
 	"fmt"
+	"encoding/base64"
+    "crypto/md5"
 )
 
 type (
@@ -33,11 +35,48 @@ func JavaDateStr(ts int64) string{
 	
 }
 func Money(i int) string {
-	return fmt.Sprintf("%d.%02d",i /100, i % 100)
+	
+	if i >= 0 {
+		return fmt.Sprintf("%d.%02d",i /100, i % 100)
+	}
+	i = -i
+	return fmt.Sprintf("-%d.%02d",i /100, i % 100)
 }
 
-
+func JavaTimestampIntNow() int64{
+	return time.Now().UnixNano() / 1000000
+}
+func JavaDateInt(date string) int64{
+	d,err:=time.Parse(DATE,date)
+	if err != nil {
+		panic(err)
+	}
+	return d.Unix()*1000
+}
+func NowDateStr() string{
+	return time.Now().Format(DATE)
+}
+func guessExpense(exp *Expense) int{
+	retval:=EDIT_EXP
+	if exp.CreatedTime==0 {
+		exp.CreatedTime=JavaTimestampIntNow()
+		retval=NEW_EXP
+	}
+	if exp.Seq=="" {
+		exp.Seq=UniqueId()
+	}
+	return retval
+}
+func UniqueId() string{
+    enc := base64.NewEncoding("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_/")
+    h:=md5.New()
+    h.Write([]byte(time.Now().Format(TIMESTAMP)))
+	return enc.EncodeToString(h.Sum(nil))[:20]
+}
 const (
 	TIMESTAMP = "2006-01-02 15:04:05.000 -0700"
 	DATE      = "2006-01-02"
+
+	NEW_EXP int = 1
+	EDIT_EXP int = 2
 )

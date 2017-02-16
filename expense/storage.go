@@ -29,12 +29,20 @@ func NewCloud(ctx context.Context,ac string) (*ExpenseCloud,error){
 	return &ExpenseCloud{
 		client : cli,
 		Save:  func(es []Expense)error {
+			oh := bucket.Object(filename)
+			objw := oh.NewWriter(ctx)
+			defer objw.Close()
+			buf,err := yaml.Marshal(es)
+			if err != nil { return err }
+			_,err = objw.Write(buf)
+			if err != nil { return err }
 			return nil
 		},
 		Load: func(es *[]Expense)error{
 			oh := bucket.Object(filename)
 			objr,err := oh.NewReader(ctx)
 			if err != nil { return err }
+			defer objr.Close()
 			buf,err := ioutil.ReadAll(objr)
 			if err != nil { return err }
 			return yaml.Unmarshal(buf,es)
@@ -47,7 +55,7 @@ func (ec *ExpenseCloud)Close()error{
 func AllAccount(bucket *gcs.Bucket,one func (act string)) error{
 	q := storage.Query{
 		Delimiter:"/",
-		Prefix:"expense/",
+		Prefix:prefix,
 	}
 	e:=bucket.Objects(gcs.AttrCallback(func(attrs *storage.ObjectAttrs) error{
 		aName := attrs.Name[8:]
@@ -119,5 +127,5 @@ func OldData(ctx context.Context) []Expense{
 const (
 //	projectId= "personal-financial-140007"
 	bucketName="pfa.rc-greed.com"
-	prefix = "expense/"
+	prefix = "expense2/"
 )
