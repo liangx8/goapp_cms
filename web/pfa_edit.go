@@ -10,13 +10,51 @@ import (
 	"strconv"
 	"strings"
 )
+func pfaDelete(ctx context.Context){
+	w,r,_ := spark.ReadHttpContext(ctx)
+	account := r.FormValue("account")
+	pg := template.Must(template.New("page").Parse(expdelete))
+	data:= make(map[string]interface{})
+	if account == "" {
+		data["success"]=false
+		data["message"]="必须提供帐套名称"
+	} else {
+		seq := r.FormValue("seq")
+		cloud,err := expense.NewCloud(ctx,account)
+		if err != nil {
+			data["success"]=false
+			data["message"]=err
+			goto renderPage
+		}
+		err = cloud.Delete(seq)
+		if err != nil {
+			data["success"]=false
+			data["message"]=err
+			goto renderPage
+		}
+			data["success"]=true
+	}
+renderPage:
+	pg.Execute(w,data)
+	
+}
 func pfaEdit(ctx context.Context){
 	w,r,_ := spark.ReadHttpContext(ctx)
 	if r.Method != "POST" {
 		panic("必须是PUT或者POST");
 	}
-	page = template.Must(template.New("page").Parse(expedit))
+	pg := template.Must(template.New("page").Parse(expedit))
 	data:= make(map[string]interface{})
+	r.ParseForm()
+	_,ok :=r.Form["account"]
+	if ! ok {
+		data["error"]="必须提供帐套"
+		data["name"]="错误"
+		pg.Execute(w,data)
+		return
+	}
+	accountName :=r.FormValue("account")
+	data["account"]=accountName
 	var exp expense.Expense
 	log.Infof(ctx,"%s",r.FormValue("tags"))
 	parseExpense(r,&exp)
@@ -42,13 +80,29 @@ func pfaEdit(ctx context.Context){
 	if exp.Tags != nil {
 		data["tags"]=strings.Join(exp.Tags,",")
 	}
-	
-	
-	data["name"]=r.FormValue("account")
+	_,ok =r.Form["save"]
+	if ok {
+		cloud,err := expense.NewCloud(ctx,accountName)
+		if err != nil {
+			data["error"]=err
+			data["title"]="错误"
+			pg.Execute(w,data)
+			return
+		}
+		defer cloud.Close()
+		expense.CompleteExpense(&exp)
+		err = cloud.InsertOrUpdate(exp)
+		if err != nil {
+		data["error"]=err
+			data["title"]="错误"
+			pg.Execute(w,data)
+			return
+		}
+	}
 	ary := make([]string,0,30)
 	ary = append(ary,expense.Money(exp.Amount))
 	data["tagslist"]=ary
-	page.Execute(w,data)
+	pg.Execute(w,data)
 }
 
 func parseExpense(r *http.Request,exp *expense.Expense) {
@@ -92,12 +146,34 @@ func pfaList(ctx context.Context){
 
 	pg := template.Must(template.New("page").Parse(explist))
 	data:= make(map[string]interface{})
-	account :=r.FormValue("account")
-	if account== ""{
-		data["title"]="必须提供一个帐套名称"
-	} else {
-		data["title"]=account
+	r.ParseForm()
+	_,ok := r.Form["account"]
+	if ok {
+		account :=r.FormValue("account")
+		data["account"]=account
 		data["ok"]=true
+		cloud,err := expense.NewCloud(ctx,account)
+		if err != nil {
+			data["error"]=err
+			data["title"]="错误"
+			pg.Execute(w,data)
+			return
+		}
+		defer cloud.Close()
+		var exps []expense.Expense
+		err = cloud.Load(&exps)
+		if err != nil {
+			data["error"]=err
+			data["title"]="错误"
+			pg.Execute(w,data)
+			return
+		}
+		data["data"]=exps
+		data["showdate"]=expense.JavaDateStr
+		data["showts"]=expense.JavaTimestampStr
+		data["showmoney"]=expense.Money
+	} else {
+		data["account"]="必须提供一个帐套名称"
 	}
 	
 	pg.Execute(w,data)
@@ -106,9 +182,15 @@ const (
 	expedit=`<!DOCTYPE HTML>
 <html>
 <head>
-	<title>Expense Account {{.name}}</title>
+	<title>Expense Account {{.title}}</title>
 </head>
 <body>
+{{if .error}}
+<h3>{{.error}}</h3>
+{{else}}
+{{if .inputerror}}
+{{.inputerror}}
+{{end}}
 <datalist id="tagslist">
 {{range .tagslist}}
 <option value="{{.}}" />
@@ -131,20 +213,43 @@ const (
 {{if .seq}}
 <input type="hidden" name="seq" value="{{.seq}}"/>
 {{end}}
+<input type="hidden" name="account" value="{{.account}}"/>
 {{if .createdtime}}
 <input type="hidden" name="createdtime" value="{{.createdtime}}" />
 {{end}}
+<input type="hidden" name="save" value="save" />
 </form>
-{{.data}}
+{{end}}
 </body>
 </html>`
-	explist=`<!DOCTYPE HTML>
+	explist=`{{$dateStr := .showdate}}{{$moneyStr := .showmoney}}{{$ac := .account}}{{$tsStr := .showts}}
+<!DOCTYPE HTML>
 <html>
 <head><title>{{.title}}</title></head>
 <body>
-<h3>{{.title}}</h3>
-{{if .ok}}<form action="/edit" method="POST"><input type="submit" value="添加" /></form>{{end}}
+{{if .ok}}
+
+<h3>列出{{.account}}的内容</h3>
+<form action="/edit" method="POST">
+<input type="submit" value="添加" />
+<input type="hidden" name="account" value="{{.account}}" />
+</form>
+{{else}}
+<h3>{{.account}}</h3>
+{{end}}
+<table>
+{{range .data}}
+<tr>
+<td>{{call $dateStr .When}}</td>
+<td>{{call $moneyStr .Amount}}</td>
+<td>{{.Tags}}</td><td>{{.Remark}}</td>
+<td>{{call $tsStr .CreatedTime}}</td>
+<td><a href="/delete?seq={{.Seq}}&account={{$ac}}">删除</a></td>
+</tr>
+{{end}}
+</table>
 </body>
 </html>
 `
+	expdelete=`{"success":{{.success}}{{if .message}},"message":"{{.message}}"{{end}} }`
 )

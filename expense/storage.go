@@ -9,8 +9,11 @@ import (
 
 	
 	"github.com/liangx8/gcloud-helper/gcs"
+
+
 	"io/ioutil"
 	"fmt"
+
 )
 
 type (
@@ -41,6 +44,9 @@ func NewCloud(ctx context.Context,ac string) (*ExpenseCloud,error){
 		Load: func(es *[]Expense)error{
 			oh := bucket.Object(filename)
 			objr,err := oh.NewReader(ctx)
+			if err == storage.ErrObjectNotExist {
+				return nil
+			}
 			if err != nil { return err }
 			defer objr.Close()
 			buf,err := ioutil.ReadAll(objr)
@@ -51,6 +57,64 @@ func NewCloud(ctx context.Context,ac string) (*ExpenseCloud,error){
 }
 func (ec *ExpenseCloud)Close()error{
 	return ec.client.Close()
+}
+func (ec *ExpenseCloud)InsertOrUpdate(ex Expense) error {
+	exps:= make([]Expense,0,200)
+	err :=ec.Load(&exps)
+	if err != nil {
+		return err
+	}
+	isInsert := true
+	for i,e := range exps{
+		if e.Seq == ex.Seq {
+			exps[i]=ex
+			isInsert = false
+			break
+		}
+	}
+	if isInsert {
+		exps = append(exps,ex)
+	}
+	err = ec.Save(exps)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (ec *ExpenseCloud)Delete(seq string) error{
+	exps:= make([]Expense,0,200)
+	dst:= make([]Expense,0,200)
+	err :=ec.Load(&exps)
+	if err != nil {
+		return err
+	}
+	change :=false
+	for _,e := range exps{
+		if e.Seq == seq {
+			change = true
+			continue
+		}
+		dst = append(dst,e)
+	}
+	if change {
+		return ec.Save(dst)
+	}else {
+		// no change, do nothing
+		return nil
+	}
+}
+// TODO: work here
+func (ec *ExpenseCloud)Merge(exps []Expense,result func(addCount,updateCount int, err error)){
+	var org []Expense
+	err := ec.Load(&org)
+	if err != nil {
+		result(0,0,err)
+		return
+	}
+	x,a,u :=Merge(org,exps)
+	ec.Save(x)
+	result(a,u,nil)
+
 }
 func AllAccount(bucket *gcs.Bucket,one func (act string)) error{
 	q := storage.Query{
@@ -69,8 +133,9 @@ func AllAccount(bucket *gcs.Bucket,one func (act string)) error{
 		one("")
 		return nil
 	}
-
 }
+
+
 func OldData(ctx context.Context) []Expense{
 	cli,err := storage.NewClient(ctx)
 	if err != nil {

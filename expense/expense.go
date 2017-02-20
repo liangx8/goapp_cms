@@ -1,10 +1,16 @@
 package expense
 
 import (
+	"github.com/liangx8/spark/helper"
+
+
+
 	"time"
 	"fmt"
 	"encoding/base64"
     "crypto/md5"
+	"strings"
+	"sort"
 )
 
 type (
@@ -56,16 +62,13 @@ func JavaDateInt(date string) int64{
 func NowDateStr() string{
 	return time.Now().Format(DATE)
 }
-func guessExpense(exp *Expense) int{
-	retval:=EDIT_EXP
+func CompleteExpense(exp *Expense) {
 	if exp.CreatedTime==0 {
 		exp.CreatedTime=JavaTimestampIntNow()
-		retval=NEW_EXP
 	}
 	if exp.Seq=="" {
 		exp.Seq=UniqueId()
 	}
-	return retval
 }
 func UniqueId() string{
     enc := base64.NewEncoding("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_/")
@@ -73,10 +76,51 @@ func UniqueId() string{
     h.Write([]byte(time.Now().Format(TIMESTAMP)))
 	return enc.EncodeToString(h.Sum(nil))[:20]
 }
+
+func cmpSeq(l,r interface{})bool{
+	return strings.Compare(l.(Expense).Seq,r.(Expense).Seq) < 0
+}
+
+func Merge(src,dst []Expense)([]Expense,int,int){
+	srt := helper.NewSorter(src,cmpSeq)
+	sort.Sort(srt)
+	srt = helper.NewSorter(dst,cmpSeq)
+	sort.Sort(srt)
+	idxdst := 0
+	updateCount :=0;
+	addition :=make([]Expense,0,20)
+outer:
+	for idxsrc,v := range src{
+		if idxdst >= len(dst) {
+			break
+		}
+		x := strings.Compare(v.Seq,dst[idxdst].Seq)
+		for x > 0 {
+			addition = append(addition,dst[idxdst])
+			idxdst ++
+			if idxdst >= len(dst) {
+				break outer
+			}
+			x = strings.Compare(v.Seq,dst[idxdst].Seq)
+		}
+		if x==0 {
+			src[idxsrc]=dst[idxdst]
+			idxdst ++
+			updateCount ++
+			continue
+		}
+		if x <0 {
+			continue
+		}
+	}
+	if idxdst < len(dst){
+		addition = append(addition,dst[idxdst:]...)
+	}
+	return append(src,addition...),len(addition),updateCount
+
+}
 const (
 	TIMESTAMP = "2006-01-02 15:04:05.000 -0700"
 	DATE      = "2006-01-02"
 
-	NEW_EXP int = 1
-	EDIT_EXP int = 2
 )

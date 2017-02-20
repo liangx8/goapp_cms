@@ -35,7 +35,9 @@ func index(ctx context.Context){
 	defer bucket.Close()
 	accounts := make([]string,0,10)
 	err = expense.AllAccount(bucket,func(name string){
-		accounts=append(accounts,name)
+		if len(name) > 0 && name[0] == '/' {
+			accounts=append(accounts,name[1:])
+		}
 	})
 	if err != nil {
 		fmt.Fprintf(w,"read objects error:%v",err)
@@ -55,6 +57,7 @@ func init(){
 	spk.HandleFunc("/",index)
 	spk.HandleFunc("/edit",pfaEdit)
 	spk.HandleFunc("/list",pfaList)
+	spk.HandleFunc("/delete",pfaDelete)
 	page = template.Must(template.New("page").Parse(homeTemplate))
 }
 var page *template.Template
@@ -71,7 +74,7 @@ const (
 新建帐套:<input name="account" /><input type="submit" />
 </form>
 {{range .account}}
-{{.}}
+<a href="/list?account={{.}}">{{.}}</a>
 {{end}}
 </body>
 </html>`

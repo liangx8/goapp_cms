@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"strings"
 	"io"
+	"io/ioutil"
 	"unicode/utf8"
 	"encoding/json"
 )
@@ -53,7 +54,8 @@ func pfa(ctx context.Context){
 			}
 			return
 		}
-		if buf[1]==expense_request{
+		comp := buf[1]
+		if comp==expense_request || comp==expense_request_new {
 			num,_=r.Body.Read(buf[0:1])
 			if num != 1 {
 				fmt.Fprintf(w,returnError,"期望帐套名称的长度")
@@ -71,13 +73,74 @@ func pfa(ctx context.Context){
 				fmt.Fprintf(w,returnError,"必须提供一个UTF-8编码的账户名")
 				return
 			}
-//			fmt.Fprintf(w,"请求帐套: %s",account)
-			expenses:=expense.OldData(ctx)
-			if expenses != nil {
-				buf,_=json.Marshal(expenses)
-				w.Write(buf)
+			//			fmt.Fprintf(w,"请求帐套: %s",account)
+			if comp==expense_request {
+				exps:=expense.OldData(ctx)
+				if exps == nil {
+					fmt.Fprint(w,"{}")
+				} else {
+					buf, _ = json.Marshal(exps)
+					w.Write(buf)
+				}
+			} else {
+				cloud,err := expense.NewCloud(ctx,account)
+				if err != nil {
+					fmt.Fprintf(w,returnError,err)
+					return
+				}
+				defer cloud.Close()
+				var exps []expense.Expense
+				err = cloud.Load(&exps)
+				if err != nil {
+					fmt.Fprintf(w,returnError,"必须提供一个UTF-8编码的账户名")
+				}
+				if exps == nil {
+					fmt.Fprint(w,"{}")
+				} else {
+					buf, _ = json.Marshal(exps)
+					w.Write(buf)
+				}
 			}
 		}
+	}
+	if buf[0] == data_incoming {
+		acLen := int(buf[1])
+		buf= make([]byte,acLen)
+		num,_ = r.Body.Read(buf)
+		if num != acLen {
+			fmt.Fprintf(w,returnError,"帐套名称长度不符")
+			return
+		}
+		account := string(buf)
+		if !utf8.ValidString(account){
+			fmt.Fprintf(w,returnError,"必须提供一个UTF-8编码的账户名")
+			return
+		}
+		// TODO: 读数据，然后保存
+		buf,err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			fmt.Fprintf(w,returnError,err)
+			return
+		}
+		var exps []expense.Expense
+		err = json.Unmarshal(buf,&exps)
+		if err != nil {
+			fmt.Fprintf(w,returnError,err)
+			return
+		}
+		cloud,err := expense.NewCloud(ctx,account)
+		if err != nil {
+			fmt.Fprintf(w,returnError,err)
+			return
+		}
+		defer cloud.Close()
+		cloud.Merge(exps,func(add,update int, err error){
+			if err == nil {
+				fmt.Fprintf(w,"新增%d条记录，更新%d条记录\n",add,update)
+			} else {
+				fmt.Fprintf(w,returnError,err)
+			}
+		})
 	}
 
 }
@@ -99,8 +162,9 @@ func jsonListAccount(w io.Writer) func(string){
 
 const (
 	returnError = `["error","%s"]`
-	data_incoming   byte = 1
-	data_outgoing   byte = 2
-	account_request byte = 3
-	expense_request byte = 4
+	data_incoming       byte = 1
+	data_outgoing       byte = 2
+	account_request     byte = 3
+	expense_request     byte = 4
+	expense_request_new byte = 5
 )
