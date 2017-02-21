@@ -6,14 +6,18 @@ import (
 	"golang.org/x/net/context"
 	"html/template"
 	"github.com/liangx8/spark"
+
+
 	"expense"
 	"strconv"
 	"strings"
+	"github.com/liangx8/spark/helper"
+	"sort"
+	"encoding/json"
 )
 func pfaDelete(ctx context.Context){
 	w,r,_ := spark.ReadHttpContext(ctx)
 	account := r.FormValue("account")
-	pg := template.Must(template.New("page").Parse(expdelete))
 	data:= make(map[string]interface{})
 	if account == "" {
 		data["success"]=false
@@ -23,19 +27,21 @@ func pfaDelete(ctx context.Context){
 		cloud,err := expense.NewCloud(ctx,account)
 		if err != nil {
 			data["success"]=false
-			data["message"]=err
+			data["message"]=err.Error()
 			goto renderPage
 		}
 		err = cloud.Delete(seq)
 		if err != nil {
 			data["success"]=false
-			data["message"]=err
+			data["message"]=err.Error()
 			goto renderPage
 		}
-			data["success"]=true
+		data["success"]=true
+		data["seq"]=seq
 	}
 renderPage:
-	pg.Execute(w,data)
+	buf,_:=json.Marshal(data)
+	w.Write(buf)
 	
 }
 func pfaEdit(ctx context.Context){
@@ -168,6 +174,10 @@ func pfaList(ctx context.Context){
 			pg.Execute(w,data)
 			return
 		}
+		srt :=helper.NewSorter(exps,func(l,r interface{})bool{
+			return r.(expense.Expense).When < l.(expense.Expense).When
+		})
+		sort.Sort(srt)
 		data["data"]=exps
 		data["showdate"]=expense.JavaDateStr
 		data["showts"]=expense.JavaTimestampStr
@@ -222,13 +232,43 @@ const (
 {{end}}
 </body>
 </html>`
-	explist=`{{$dateStr := .showdate}}{{$moneyStr := .showmoney}}{{$ac := .account}}{{$tsStr := .showts}}
+	explist=`{{$dateStr := .showdate}}{{$moneyStr := .showmoney}}{{$tsStr := .showts}}
 <!DOCTYPE HTML>
 <html>
-<head><title>{{.title}}</title></head>
+<head>
+<title>{{.title}}</title>
+<script>
+function deleteThis(obj,seq)
+{
+  btn=obj
+  btn.disabled=true
+  xmlhttp=new XMLHttpRequest();
+  xmlhttp.onreadystatechange=function(){
+    if (xmlhttp.readyState!=4) {
+      return;
+    }
+    result=xmlhttp.responseText;
+    resp = eval("("+result+")");
+    if (resp.success) {
+      parent = obj.parentNode;
+      while ( parent.tagName != "TBODY"){
+        obj=parent;
+        parent=obj.parentNode;
+      }
+      parent.removeChild(obj);
+    } else {
+      document.getElementById("errorId").innerHTML=resp.message;
+      btn.disabled=false
+    }
+  }
+  xmlhttp.open("GET","/delete?seq="+seq+"&account={{.account}}",true);
+  xmlhttp.send();
+}
+</script>
+
+</head>
 <body>
 {{if .ok}}
-
 <h3>列出{{.account}}的内容</h3>
 <form action="/edit" method="POST">
 <input type="submit" value="添加" />
@@ -237,6 +277,8 @@ const (
 {{else}}
 <h3>{{.account}}</h3>
 {{end}}
+{{if .data}}
+<div style="color:red" id="errorId"></div>
 <table>
 {{range .data}}
 <tr>
@@ -244,10 +286,11 @@ const (
 <td>{{call $moneyStr .Amount}}</td>
 <td>{{.Tags}}</td><td>{{.Remark}}</td>
 <td>{{call $tsStr .CreatedTime}}</td>
-<td><a href="/delete?seq={{.Seq}}&account={{$ac}}">删除</a></td>
+<td><button onclick="deleteThis(this,'{{.Seq}}')">删除</button></td>
 </tr>
 {{end}}
 </table>
+{{end}}
 </body>
 </html>
 `

@@ -99,8 +99,8 @@ func (ec *ExpenseCloud)Delete(seq string) error{
 	if change {
 		return ec.Save(dst)
 	}else {
-		// no change, do nothing
-		return nil
+		
+		return fmt.Errorf("%s is not exists",seq)
 	}
 }
 // TODO: work here
