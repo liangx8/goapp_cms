@@ -16,6 +16,7 @@ import (
 
 //	"pfa"
 	"expense"
+	ex2 "expense2"
 )
 
 
@@ -39,6 +40,7 @@ func index(ctx context.Context){
 			accounts=append(accounts,name[1:])
 		}
 	})
+
 	if err != nil {
 		fmt.Fprintf(w,"read objects error:%v",err)
 		log.Errorf(ctx,"%v",err)
@@ -58,6 +60,7 @@ func init(){
 	spk.HandleFunc("/edit",pfaEdit)
 	spk.HandleFunc("/list",pfaList)
 	spk.HandleFunc("/delete",pfaDelete)
+	spk.HandleFunc("/move",ex2.Move)
 	page = template.Must(template.New("page").Parse(homeTemplate))
 }
 var page *template.Template
