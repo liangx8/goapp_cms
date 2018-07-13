@@ -17,6 +17,7 @@ import (
 //	"pfa"
 	"expense"
 	ex2 "expense2"
+	"dist"
 )
 
 
@@ -61,6 +62,7 @@ func init(){
 	spk.HandleFunc("/list",pfaList)
 	spk.HandleFunc("/delete",pfaDelete)
 	spk.HandleFunc("/move",ex2.Move)
+	spk.HandleFunc("/touch",dist.Touch)
 	page = template.Must(template.New("page").Parse(homeTemplate))
 }
 var page *template.Template

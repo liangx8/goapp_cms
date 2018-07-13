@@ -1,11 +1,11 @@
 <html>
   <head>
-	<title>数据迁移</title>
+	<title>数据迁移 [[{{.account}}]]</title>
   </head>
   <body>
 	Pick Account
 	<ul>
-	{{range .}}
+	{{range .list}}
 	<li><a href="move?account={{.}}">{{.}}</a></li>
 	{{end}}
 	</ul>

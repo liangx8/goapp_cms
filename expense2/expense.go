@@ -14,11 +14,11 @@ type (
 		Tags []string `json:"tags" yaml:"tags"`
 		When int64 `json:"when" yaml: "when"`
 		CreatedTime int64 `json:"created-time" yaml:"created-time"`
-		Rseq string `json:"rseq" yaml:"rseq"`
 	}
 	Relation struct{
-		Seq string `yaml:"seq"`
-		Remark string `yaml:"seq"`
+		Seq string `yaml:-`
+		Remark string `yaml:"remark"`
+		Expenses []Expense `yaml:"items"`
 	}
 )
 var location *time.Location
