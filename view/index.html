@@ -1,0 +1,36 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<style>
+    div:hover{
+        background-color: rgb(157, 236, 183);
+    }
+    body{
+        background-color: azure;
+    }
+</style>
+<script>
+    function pageInit() {
+        console.log(this)
+        document.getElementById("msg").innerHTML = "hello world"
+        document.getElementsByTagName("title")[0].innerText = "学习技术"
+
+    }
+    function act1(){
+        document.getElementById("msg").innerHTML = "clicked"
+    }
+</script>
+
+<head>
+    <title>js tutorial</title>
+</head>
+
+<body onload="pageInit()">
+    <button onclick="act1()">Hello</button>
+    <div id="msg"></div>
+    <div style="display: none">none</div>
+    <div style="background: rgb(164, 229, 238); color: rgb(6, 95, 95);">color #000</div>
+</body>
+
+</html>
