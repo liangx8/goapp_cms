@@ -12,10 +12,18 @@ func TestDBInit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := dbi.Init(); err != nil {
+	if err := dbi.Init(entity.User{}); err != nil {
 		t.Fatal(err)
 	}
-	user := entity.User{Seq: 1, Name: "admin", Password: "xx", Updated: 1, Active: true, Remark: "remark"}
-	t.Log(lite.InsertSQL(user))
-	t.Fail()
+}
+func TestDBLoad(t *testing.T) {
+	user := entity.User{Seq: 1}
+	dbi, err := lite.NewDBI("home.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dbi.Load(&user); err != nil {
+		t.Fatal(err)
+	}
+
 }

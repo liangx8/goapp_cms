@@ -2,6 +2,7 @@ package utils
 
 import (
 	"hash"
+	"log"
 )
 
 type (
@@ -18,18 +19,19 @@ func (pwd *PasswordKit) Create(salt []byte, val string) []byte {
 	if saltlen > 255 {
 		panic("length of solt is greate than 255")
 	}
-	bu := []byte{byte(saltlen)}
 
+	pwd.encoder.Reset()
 	pwd.encoder.Write(salt)
 	pwd.encoder.Write([]byte(val))
-
-	return append(bu, pwd.encoder.Sum(salt)...)
-
+	return append([]byte{byte(saltlen)}, pwd.encoder.Sum(salt)...)
 }
 func (pwd *PasswordKit) Verify(enc []byte, val string) bool {
-	cn := int(enc[0])
-	salt := enc[1 : cn+1]
+	cn := uint(enc[0])
+	salt := make([]byte, cn)
+	copy(salt, enc[1:cn+1])
 	epw := pwd.Create(salt, val)
+	log.Printf("%p:%x", epw, epw)
+	log.Printf("%p:%x", enc, enc)
 	if len(epw) == len(enc) {
 		for ix, bb := range epw {
 			if enc[ix] != bb {

@@ -1,7 +1,10 @@
+/*
+ * 每个表的主键使用了rowid,因此在go中定义的主键类型必须是数字整型
+ */
+
 package lite
 
 import (
-	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"io"
@@ -11,7 +14,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"rcgreed.bid/ics/entity"
 	"rcgreed.bid/ics/mgr"
-	"rcgreed.bid/ics/utils"
 )
 
 type (
@@ -20,7 +22,9 @@ type (
 	}
 )
 
-var pwdKid = utils.NewPasswordKit(sha256.New())
+func MakeDbError(sql string, err error) error {
+	return fmt.Errorf("error [%v] at SQL:%s", err, sql)
+}
 
 func (my *dbiImp) Load(a any) error {
 	//根据不同的数据对象定义数据库表
@@ -33,9 +37,17 @@ func (my *dbiImp) Load(a any) error {
 	return fmt.Errorf("Object %T unknow", a)
 }
 func (my *dbiImp) loadUser(u *entity.User) error {
-	row := my.db.QueryRow("SELECT seq,name,pwd FROM t_user WHERE seq = ?", u.Seq)
-	err := row.Scan(&u.Seq, &u.Name, &u.Password)
+
+	row := my.db.QueryRow("SELECT name,pwd FROM t_user WHERE rowid = ?", u.Seq)
+	err := row.Scan(&u.Name, &u.Pwd)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+func (my *dbiImp) GetUserByName(usr *entity.User, name string) error {
+	row := my.db.QueryRow("SELECT name,pwd FROM t_user WHERE name = ? AND active = 1", name)
+	if err := row.Scan(&usr.Name, &usr.Pwd); err != nil {
 		return err
 	}
 	return nil
@@ -47,19 +59,50 @@ func (my *dbiImp) loadItem(it *entity.Item) error {
 func (my *dbiImp) Close() {
 	my.db.Close()
 }
-func (my *dbiImp) Init() error {
+func (my *dbiImp) Init(admin entity.User) error {
 	//my.db.Exec("CREATE TABLE ")
+	sql := createSQL(reflect.TypeOf((*entity.User)(nil)).Elem())
+	if _, err := my.db.Exec(sql); err != nil {
+		return MakeDbError(sql, err)
+	}
+	sql = createSQL(reflect.TypeOf((*entity.Participate)(nil)).Elem())
+	if _, err := my.db.Exec(sql); err != nil {
+		return MakeDbError(sql, err)
+	}
+	sql = createSQL(reflect.TypeOf((*entity.Item)(nil)).Elem())
+	if _, err := my.db.Exec(sql); err != nil {
+		return MakeDbError(sql, err)
+	}
+	if err := my.Add(admin); err != nil {
+		return err
+	}
 
-	if _, err := my.db.Exec(CreateSQL(reflect.TypeOf((*entity.User)(nil)).Elem())); err != nil {
-		return err
-	}
-	if _, err := my.db.Exec(CreateSQL(reflect.TypeOf((*entity.Participate)(nil)).Elem())); err != nil {
-		return err
-	}
-	if _, err := my.db.Exec(CreateSQL(reflect.TypeOf((*entity.Item)(nil)).Elem())); err != nil {
-		return err
-	}
+	return nil
+}
+func (my *dbiImp) Add(d any) error {
+	switch obj := d.(type) {
+	case entity.User:
+		if err := addUser(my.db, obj); err != nil {
+			return err
+		}
 
+	}
+	return nil
+}
+
+func addUser(dB *sql.DB, usr entity.User) error {
+	if _, err := dB.Exec(insertSQL(usr)); err != nil {
+		return err
+	}
+	return nil
+}
+func (my *dbiImp) Save(d any) error {
+	switch obj := d.(type) {
+	case entity.User:
+		if _, err := my.db.Exec(fmt.Sprintf("UPDATE t_user set pwd=x'%x',active = %t WHERE rowid = ?", obj.Pwd, obj.Active), obj.Seq); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 func NewDBI(dsn string) (mgr.DBI, error) {
@@ -79,7 +122,6 @@ func tableNameByEntity(en any) string {
 		return "t_item"
 	}
 	panic("no entity match")
-
 }
 
 var tableByEntityName = map[string]string{
@@ -98,25 +140,33 @@ func setVal(w io.Writer, t reflect.Type, v reflect.Value) {
 		} else {
 			fmt.Fprint(w, 0)
 		}
-
+	case reflect.Slice:
+		// 期望类型是byte
+		fmt.Fprintf(w, "x'%x'", v.Bytes())
 	case reflect.String:
 		fmt.Fprintf(w, "'%s'", v.String())
 	}
 }
-func CreateSQL(t reflect.Type) string {
+func createSQL(t reflect.Type) string {
 	var cr strings.Builder
 	if tn, ok := tableByEntityName[t.Name()]; ok {
 		fmt.Fprintf(&cr, "DROP TABLE IF EXISTS %s; CREATE TABLE %s (", tn, tn)
 	} else {
 		panic("no table coresponding to type")
 	}
-
+	first := true
 	for ii := 0; ii < t.NumField(); ii++ {
 		f := t.Field(ii)
-		if ii > 0 {
-			fmt.Fprint(&cr, ",")
+		if _, ok := f.Tag.Lookup("primary"); ok {
+			// 用rowid来代替
+			continue
 		}
 		if fn, ok := f.Tag.Lookup("name"); ok {
+			if first {
+				first = false
+			} else {
+				fmt.Fprint(&cr, ",")
+			}
 			fmt.Fprint(&cr, fn)
 			switch f.Type.Kind() {
 			case reflect.Uint64, reflect.Bool:
@@ -128,42 +178,51 @@ func CreateSQL(t reflect.Type) string {
 			case reflect.Array:
 				panic("Array")
 			case reflect.Slice:
-
+				fmt.Fprintf(&cr, " BLOB")
 			}
-		}
-		_, ok := f.Tag.Lookup("primary")
-		if ok {
-			fmt.Fprint(&cr, " PRIMARY KEY")
 		}
 	}
 	cr.WriteRune(')')
 	return cr.String()
 }
-func InsertSQL(obj any) string {
+func insertSQL(obj any) string {
 	tn := tableNameByEntity(obj)
 	ty := reflect.TypeOf(obj)
 	va := reflect.ValueOf(obj)
 	var fie, val strings.Builder
 	fmt.Fprintf(&fie, "INSERT INTO %s (", tn)
 	fmt.Fprintf(&val, " VALUES (")
+	first := true
 	for ix := 0; ix < ty.NumField(); ix++ {
-		if ix > 0 {
-			fmt.Fprint(&fie, ",")
-			fmt.Fprint(&val, ",")
+		// 主键用rowid，因此无需建立主键字段
+		if _, ok := ty.Field(ix).Tag.Lookup("primary"); ok {
+			continue
 		}
-		fmt.Fprint(&fie, ty.Field(ix).Tag.Get("name"))
-		setVal(&val, ty.Field(ix).Type, va.Field(ix))
+		if fn, ok := ty.Field(ix).Tag.Lookup("name"); ok {
+			if first {
+				first = false
+			} else {
+				fmt.Fprint(&fie, ",")
+				fmt.Fprint(&val, ",")
+			}
+			fmt.Fprint(&fie, fn)
+			setVal(&val, ty.Field(ix).Type, va.Field(ix))
+		}
+
 	}
 	fmt.Fprintf(&fie, ")")
 	fmt.Fprintf(&val, ")")
 	fie.WriteString(val.String())
 	return fie.String()
 }
+func TinsertSQL(obj any) string {
+	return insertSQL(obj)
+}
 func SelectSQL(obj any) string {
 	tn := tableNameByEntity(obj)
 	var b strings.Builder
 	b.WriteString("SELECT * FROM ")
 	b.WriteString(tn)
-	b.WriteString(" WHERE seq = ?")
+	b.WriteString(" WHERE rowid = ?")
 	return b.String()
 }

@@ -2,6 +2,6 @@
 #*
 .*
 */#*
-go.mod
 go.sum
-home.db
+**/*.db
+*.db
