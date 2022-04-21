@@ -22,7 +22,6 @@ const SESSIONID = "SID"
 var dbm *mgr.Manager
 
 func Login(r *http.Request, s *session.Session) (mgr.View, error) {
-	log.Printf("登录成功")
 	name := r.FormValue("name")
 	pwd := r.FormValue("password")
 	ok, err := dbm.Login(name, pwd)
@@ -47,7 +46,6 @@ func (h *hdl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	log.Println(r.RequestURI)
 	if err != nil {
 		log.Printf("%s fetch cookies error %v", r.RequestURI, err)
 		sid = ""

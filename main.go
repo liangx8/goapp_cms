@@ -5,17 +5,19 @@ import (
 	"net/http"
 
 	"rcgreed.bid/ics/ctrl"
-	"rcgreed.bid/ics/lite"
+	"rcgreed.bid/ics/install"
 )
 
 func main() {
-	ctrl.LocaleInit("messages")
-	dbi, err := lite.NewDBI("")
+	err := ctrl.LocaleInit("messages")
 	if err != nil {
-		log.Fatal(err)
-		return
+		log.Print(err)
 	}
-	defer dbi.Close()
+	_, err = install.LoadCfg()
+	if err != nil {
+		log.Print(err)
+
+	}
 
 	//log.Fatal(http.ListenAndServe(":8000", http.FileServer(http.Dir("web/"))))
 	log.Println("Server start")
